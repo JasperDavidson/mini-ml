@@ -1,21 +1,23 @@
 from tensor import Tensor
-from typing import Union
+from typing import Union, Callable
+
+import numpy as np
 
 """
 Basic operations for Tensors
 """
 
 # Helper method to setup and compute the basic "out" tensor from operations
-def dual_op_setup(t1: Tensor, t2: Union[Tensor, float, int]) -> Tensor:
+def dual_op_setup(t1: Tensor, t2: Union[Tensor, float, int], combine_fn: Callable[[np.array], np.array]) -> Tensor:
     t2 = t2 if isinstance(t2, Tensor) else Tensor(t2)
 
-    data = t1.data + t2.data
+    data = combine_fn(t1.data, t2.data)
     requires_grad = t1.requires_grad or t2.requires_grad
 
     return Tensor(data, requires_grad)
 
 def add(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
-    out = dual_op_setup(t1, t2)
+    out = dual_op_setup(t1, t2, lambda x, y: x + y)
 
     if out.requires_grad:
         # Derivative of addition operation is always one
@@ -31,7 +33,7 @@ def add(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
     return out
 
 def mul(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
-    out = dual_op_setup(t1, t2)
+    out = dual_op_setup(t1, t2, lambda x, y: x * y)
 
     if out.requires_grad:
         # Derivative of multiplication leaves behind all variables except the variable the derivative is w.r.t.
@@ -75,3 +77,15 @@ def inv(t: Union[Tensor, float, int]) -> Tensor:
 
         out._grad_fn = grad_fn
         out._parents = [t]
+
+    return out
+
+def eq(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
+    if not isinstance(t1, Tensor):
+        t1 = Tensor(t1)
+    if not isinstance(t2, Tensor):
+        t2 = Tensor(t2)
+
+    comp_result = np.equal(t1.data, t2.data) and (t1.requires_grad and t2.requires_grad)
+
+    return Tensor(float(comp_result))

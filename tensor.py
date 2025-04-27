@@ -7,6 +7,7 @@ class Tensor:
         self.data = np.array(data)
         self.requires_grad = requires_grad
         self._grad = None
+        self._prev_grad = None
 
         # Autodiff internal requirements
         self._grad_fn = None
