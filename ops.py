@@ -1,23 +1,43 @@
-from tensor import Tensor
-from typing import Union, Callable
+import math
 
-import numpy as np
+from tensor import Tensor
+from typing import Callable
 
 """
 Basic operations for Tensors
 """
 
-# Helper method to setup and compute the basic "out" tensor from operations
-def dual_op_setup(t1: Tensor, t2: Union[Tensor, float, int], combine_fn: Callable[[np.array], np.array]) -> Tensor:
-    t2 = t2 if isinstance(t2, Tensor) else Tensor(t2)
+# If two tensors are of different shapes, we need to mold them into the same shape in order to perform the operation --> "broadcasting"
+def broadcast_op(t1: Tensor, t2: Tensor, combine_fn: Callable[[float], float]) -> Tensor:
+    # Create the broadcasted shape
+    broadcast_shape = Tensor.broadcast_shapes(t1.shape, t2.shape)
 
-    data = combine_fn(t1.data, t2.data)
-    requires_grad = t1.requires_grad or t2.requires_grad
+    # Compute the data w/broadcasted shape
+    output_data = []
 
-    return Tensor(data, requires_grad)
+    total_size = math.prod(broadcast_shape)
 
-def add(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
-    out = dual_op_setup(t1, t2, lambda x, y: x + y)
+    for idx in range(total_size):
+        # Compute the multidimensional address in the broadcasted shape
+        temp_idx = idx
+        multi_idx = []
+        for dim in reversed(broadcast_shape):
+            multi_idx.append((temp_idx % dim,))
+            temp_idx //= dim
+        multi_idx.reverse()
+
+        flat_idx_1 = tuple(multi_idx[i] if t1.shape[i] > 1 else 0 for i in range(len(multi_idx)))
+        flat_idx_2 = tuple(multi_idx[i] if t2.shape[i] > 1 else 0 for i in range(len(multi_idx)))
+
+        flat_index_1 = t1.flatten_index(flat_idx_1)
+        flat_index_2 = t2.flatten_index(flat_idx_2)
+
+        output_data.append(combine_fn(t1.data[flat_index_1], t2.data[flat_index_2]))
+    
+    return Tensor(output_data, broadcast_shape, requires_grad=True)
+
+def add(t1: Tensor, t2: Tensor) -> Tensor:
+    out = broadcast_op(t1, t2, lambda x, y: x + y)
 
     if out.requires_grad:
         # Derivative of addition operation is always one
@@ -32,8 +52,8 @@ def add(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
 
     return out
 
-def mul(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
-    out = dual_op_setup(t1, t2, lambda x, y: x * y)
+def mul(t1: Tensor, t2: Tensor) -> Tensor:
+    out = broadcast_op(t1, t2, lambda x, y: x * y)
 
     if out.requires_grad:
         # Derivative of multiplication leaves behind all variables except the variable the derivative is w.r.t.
@@ -48,8 +68,7 @@ def mul(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
 
     return out
 
-def neg(t: Union[Tensor, float, int]) -> Tensor:
-    t = t if isinstance(t, Tensor) else Tensor(t)
+def neg(t: Tensor) -> Tensor:
     out = Tensor(-t.data, t.requires_grad)
 
     if out.requires_grad:
@@ -64,8 +83,7 @@ def neg(t: Union[Tensor, float, int]) -> Tensor:
 
     return out
 
-def inv(t: Union[Tensor, float, int]) -> Tensor:
-    t = t if isinstance(t, Tensor) else Tensor(t)
+def inv(t: Tensor) -> Tensor:
     out = Tensor(1 / t.data, t.requires_grad)
 
     if out.requires_grad:
@@ -80,12 +98,10 @@ def inv(t: Union[Tensor, float, int]) -> Tensor:
 
     return out
 
-def eq(t1: Union[Tensor, float, int], t2: Union[Tensor, float, int]) -> Tensor:
-    if not isinstance(t1, Tensor):
-        t1 = Tensor(t1)
-    if not isinstance(t2, Tensor):
-        t2 = Tensor(t2)
+def exp(t: Tensor) -> Tensor:
+    t = t if isinstance(Tensor) else Tensor(t, requires_grad=True)
 
-    comp_result = np.equal(t1.data, t2.data) and (t1.requires_grad and t2.requires_grad)
+def eq(t1: Tensor, t2: Tensor) -> Tensor:
+    comp_result = t1.data == t2.data
 
     return Tensor(float(comp_result))

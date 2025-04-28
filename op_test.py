@@ -3,7 +3,7 @@ import numpy as np
 
 from tensor import Tensor
 from hypothesis import given, strategies as st
-import ops
+import ops, autodiff
 
 @given(st.floats(), st.floats())
 def test_add(a: float, b: float):
@@ -36,3 +36,17 @@ def test_div(a: float, b: float):
     z = Tensor(a / b, False)
 
     assert ops.eq(ops.mul(x, ops.inv(y)), z)
+
+@given(st.floats(), st.floats(), st.floats(), st.floats().filter(lambda n: n != 0))
+def test_grad(a: float, b: float, c: float, d: float):
+    x = Tensor(a, True)
+    y = Tensor(b, True)
+    z = Tensor(c, True)
+    w = Tensor(d, True)
+
+    add = ops.add(x, y)
+    mul = ops.mul(add, z)
+    inv_w = ops.inv(w)
+    div = ops.mul(mul, inv_w)
+
+    topo_list = autodiff.build_topo(div)

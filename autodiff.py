@@ -2,8 +2,6 @@ from collections import deque
 from tensor import Tensor
 from typing import Iterable
 
-import numpy as np
-
 """
 For autodifferentiation, we need to have a topological graph we can trace back the grads from, accumulating them until we reach the end
 """

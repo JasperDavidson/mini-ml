@@ -1,6 +1,8 @@
 A tiny ml framework with the goal of generating efficient and verifiable compute graphs
 
-Current Goals:
+Working on: Generating compute graphs with operation nodes and tensor edges + Removing numpy to make the eventual transition to C++ easier
+
+Current goals:
 
 Finish implementing core layers like Linear and ReLU.
 
