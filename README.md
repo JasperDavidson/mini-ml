@@ -1,6 +1,6 @@
 A tiny ml framework with the goal of generating efficient and verifiable compute graphs
 
-Working on: Generating compute graphs with operation nodes and tensor edges + Removing numpy to make the eventual transition to C++ easier
+Working on: Generating compute graphs with operation nodes and tensor edges
 
 Current goals:
 
