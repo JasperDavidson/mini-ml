@@ -24,8 +24,7 @@ class Tensor:
             strides += (stride,)
         
         # Returns the strides such that it reflects the order of the shape
-        return reversed(strides)
-
+        return strides[::-1]
 
     # Calculate the flattened index based on the multi-dimensional index and shape
     def flatten_index(self, multi_idx: Iterable[int]) -> int:
