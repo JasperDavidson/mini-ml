@@ -12,8 +12,7 @@ class Tensor:
         self._grad = None
         self._prev_grad = None
         self._grad_fn = None
-        self._parents = []
-
+        self._parents = []..
     # Compute the stride for each dimension --> how many elements to progress in 1D array to get to the next section of the same dimension
     def _compute_strides(self) -> Tuple[int, ...]:
         strides = (1,)

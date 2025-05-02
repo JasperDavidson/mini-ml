@@ -4,13 +4,16 @@
 
 class Tensor {
 public:
-    Tensor(float data = 0.0f, std::vector<int> shape, bool requires_grad = false);
-
     // Core Tensor components
     float data;
     std::vector<int> shape;
     bool requires_grad;
     std::vector<int> strides;
+
+    Tensor(float data = 0.0f, std::vector<int> shape, bool requires_grad = false);
+
+    int flatten_index(const std::vector<int>& multi_idx);
+    static std::vector<int> broadcast_shapes(const std::vector<int>& shape_one, const std::vector<int>& shape_two);
 
 private:
     // Autodiff internal requirements
