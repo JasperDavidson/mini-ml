@@ -1,3 +1,6 @@
+#ifndef TENSOR_H
+#define TENSOR_H
+
 #include <vector>
 #include <functional>
 #include <ranges>
@@ -12,7 +15,7 @@ public:
 
     // Autodiff internal requirements
     std::unique_ptr<Tensor> grad;
-    std::function<std::vector<std::shared_ptr<Tensor>>(std::shared_ptr<Tensor>)> grad_fn;
+    std::function<std::vector<std::unique_ptr<Tensor>>(Tensor&)> grad_fn;
     std::vector<std::shared_ptr<Tensor>> parents;
     int grad_count = 0;
 
@@ -33,3 +36,5 @@ private:
     // Compute the stride for each dimension --> how many elements to progress in 1D array to get to the next section of the same dimension
     std::vector<int> _compute_strides();
 };
+
+#endif

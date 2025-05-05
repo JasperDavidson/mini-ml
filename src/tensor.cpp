@@ -48,7 +48,7 @@ std::vector<int> Tensor::broadcast_shapes(std::vector<int> shape_one, std::vecto
     }
 
     auto dim1 = shape_one.begin(); auto dim2 = shape_two.begin();
-    for(; dim1 != shape_one.end(), dim2 != shape_two.end(); ++dim1, ++dim2) {
+    for(; dim1 != shape_one.end() && dim2 != shape_two.end(); ++dim1, ++dim2) {
         if (*dim1 == *dim2) {
             // Doesn't matter which one we push back
             broadcast_shape.push_back(*dim1);

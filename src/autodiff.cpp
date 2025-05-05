@@ -1,30 +1,36 @@
 #include "autodiff.h"
+#include "ops.h"
 
 #include <queue>
 
-Tensor backprop(std::vector<Tensor> roots) {
+auto add = [](float a, float b) { return a + b; };
+
+void backprop(std::vector<std::shared_ptr<Tensor>> roots) {
     std::queue<std::shared_ptr<Tensor>> tensor_queue;
 
     for (auto& root : roots) {
-        root.grad = std::make_unique<Tensor>(root.ones_like());
-        tensor_queue.push(std::make_shared<Tensor>(root));
+        root->grad = std::make_unique<Tensor>(root->ones_like());
+        tensor_queue.push(root);
     }
 
     while (!tensor_queue.empty()) {
         std::shared_ptr<Tensor> current = tensor_queue.front();
+        std::vector<std::unique_ptr<Tensor>> parent_grads = current->grad_fn(*current->grad);
         tensor_queue.pop();
 
-        for (std::shared_ptr<Tensor> parent : current->parents) {
-            if (parent->grad_count == 0) {
-                tensor_queue.push(parent);
+        for (int i = 0; i < current->parents.size(); ++i) {
+            std::shared_ptr<Tensor> parent = current->parents[i];
+
+            if (!parent->grad) {
+                parent->grad = std::move(parent_grads[i]);
             } else {
-                if (!parent->grad) {
+                *parent->grad = broadcast_op(*parent->grad, *parent_grads[i], add);
+            }
 
-                } else {
-                    
-                }
+            parent->grad_count--;
 
-                parent->grad_count--;
+            if (parent->grad_count <= 0) {
+                tensor_queue.push(parent);
             }
         }
     }

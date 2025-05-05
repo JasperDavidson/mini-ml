@@ -1,5 +1,10 @@
+#ifndef AUTODIFF_H
+#define AUTODIFF_H
+
 #include "tensor.h"
 
 #include <queue>
 
-Tensor backprop(std::vector<Tensor> roots);
+void backprop(std::vector<Tensor> roots);
+
+#endif
