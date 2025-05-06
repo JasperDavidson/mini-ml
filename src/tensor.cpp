@@ -14,7 +14,7 @@ std::vector<int> Tensor::_compute_strides() {
 
     for (auto it = shape.rbegin(); it != shape.rend(); ++it) {
         stride *= *it;
-        strides.insert(strides.begin(), stride);
+        strides.push_back(stride);
     }
 
     return strides;

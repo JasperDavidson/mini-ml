@@ -4,13 +4,20 @@
 #include "ops.h"
 #include "tensor.h"
 
+// Testing
+#include <iostream>
+
 Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(float, float)) {
     // Create the broadcasted shape
     std::vector<int> broadcast_shape = Tensor::broadcast_shapes(t1.shape, t2.shape);
 
+    for (int num : broadcast_shape) {
+        std::cout << "(Dimension): " << num << '\n';
+    }
+
     // Compute the data with broadcasted shape
     std::vector<float> output_data;
-    int total_size = std::accumulate(broadcast_shape.begin(), broadcast_shape.end(), 1, std::multiplies<float>());
+    int total_size = std::accumulate(broadcast_shape.begin(), broadcast_shape.end(), 1.0, std::multiplies<float>());
 
     for (int i = 0; i < total_size; ++i) {
         int temp_idx = i;
@@ -28,6 +35,12 @@ Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(floa
         std::vector<int> flat_idx_1;
         std::vector<int> flat_idx_2;
 
+        std::cout << "multi_idx: ";
+
+        for (int num : multi_idx) {
+            std::cout << num << '\n';
+        }
+
         for (int i = 0; i < multi_idx.size(); ++i) {
             if (t1.shape[i] > 1) {
                 flat_idx_1.push_back(multi_idx[i]);
@@ -42,8 +55,16 @@ Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(floa
             }
         }
 
+        std::cout << "flat_idx_1: ";
+        for (int num : flat_idx_1) {
+            std::cout << num << '\n';
+        }
+
         int flat_index_1 = t1.flatten_index(flat_idx_1);
         int flat_index_2 = t2.flatten_index(flat_idx_2);
+
+        std::cout << "flat_index_1: " << flat_index_1 << '\n';
+        std::cout << "flat_index_2: " << flat_index_2 << '\n';
 
         // Perform the elementwise operation
         output_data.push_back(combine_fn(t1.data[flat_index_1], t2.data[flat_index_2]));
@@ -56,10 +77,10 @@ std::shared_ptr<Tensor> add(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> 
     auto add_fn = [](float a, float b) { return a + b; };
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(broadcast_op(*t1, *t2, add_fn));
 
-    auto grad_fn = [](Tensor& upstream_grad) {
-        return std::vector<std::unique_ptr<Tensor>>{
-            std::make_unique<Tensor>(upstream_grad),
-            std::make_unique<Tensor>(upstream_grad)
+    auto grad_fn = [](std::shared_ptr<Tensor> upstream_grad) {
+        return std::vector<std::shared_ptr<Tensor>>{
+            std::make_shared<Tensor>(*upstream_grad),
+            std::make_shared<Tensor>(*upstream_grad)
         };
     };
 
@@ -75,10 +96,10 @@ std::shared_ptr<Tensor> mul(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> 
     auto mul_fn = [](float a, float b) { return a * b; };
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(broadcast_op(*t1, *t2, mul_fn));
 
-    auto grad_fn = [t1, t2, mul_fn](Tensor& upstream_grad) {
-        return std::vector<std::unique_ptr<Tensor>>{
-            std::make_unique<Tensor>(broadcast_op(*t2, upstream_grad, mul_fn)),
-            std::make_unique<Tensor>(broadcast_op(*t1, upstream_grad, mul_fn))
+    auto grad_fn = [t1, t2, mul_fn](std::shared_ptr<Tensor> upstream_grad) {
+        return std::vector<std::shared_ptr<Tensor>>{
+            std::make_shared<Tensor>(broadcast_op(*t2, *upstream_grad, mul_fn)),
+            std::make_shared<Tensor>(broadcast_op(*t1, *upstream_grad, mul_fn))
         };
     };
 
@@ -96,11 +117,11 @@ std::shared_ptr<Tensor> neg(std::shared_ptr<Tensor> t) {
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(*t);
     std::transform(output_t->data.begin(), output_t->data.end(), output_t->data.begin(), neg_fn);
 
-    auto grad_fn = [neg_fn](Tensor& upstream_grad) {
-        std::unique_ptr<Tensor> neg_upstream = std::make_unique<Tensor>(upstream_grad);
+    auto grad_fn = [neg_fn](std::shared_ptr<Tensor> upstream_grad) {
+        std::shared_ptr<Tensor> neg_upstream = std::make_shared<Tensor>(*upstream_grad);
         std::transform(neg_upstream->data.begin(), neg_upstream->data.end(), neg_upstream->data.begin(), neg_fn);
 
-        return std::vector<std::unique_ptr<Tensor>>{std::move(neg_upstream)};
+        return std::vector<std::shared_ptr<Tensor>>{std::move(neg_upstream)};
     };
 
     t->grad_count++;
@@ -116,13 +137,13 @@ std::shared_ptr<Tensor> inv(std::shared_ptr<Tensor> t) {
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(*t);
     std::transform(output_t->data.begin(), output_t->data.end(), output_t->data.begin(), inv_fn);
 
-    auto grad_fn = [](Tensor& upstream_grad) {
+    auto grad_fn = [](std::shared_ptr<Tensor> upstream_grad) {
         auto inv_deriv = [](float a) { return -1 / (a * a); };
 
-        std::unique_ptr<Tensor> inv_upstream = std::make_unique<Tensor>(upstream_grad);
+        std::shared_ptr<Tensor> inv_upstream = std::make_shared<Tensor>(*upstream_grad);
         std::transform(inv_upstream->data.begin(), inv_upstream->data.end(), inv_upstream->data.begin(), inv_deriv);
         
-        return std::vector<std::unique_ptr<Tensor>>{std::move(inv_upstream)};
+        return std::vector<std::shared_ptr<Tensor>>{std::move(inv_upstream)};
     };
 
     t->grad_count++;

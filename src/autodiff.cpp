@@ -15,14 +15,14 @@ void backprop(std::vector<std::shared_ptr<Tensor>> roots) {
 
     while (!tensor_queue.empty()) {
         std::shared_ptr<Tensor> current = tensor_queue.front();
-        std::vector<std::unique_ptr<Tensor>> parent_grads = current->grad_fn(*current->grad);
+        std::vector<std::shared_ptr<Tensor>> parent_grads = current->grad_fn(current->grad);
         tensor_queue.pop();
 
         for (int i = 0; i < current->parents.size(); ++i) {
             std::shared_ptr<Tensor> parent = current->parents[i];
 
             if (!parent->grad) {
-                parent->grad = std::move(parent_grads[i]);
+                parent->grad = parent_grads[i];
             } else {
                 *parent->grad = broadcast_op(*parent->grad, *parent_grads[i], add);
             }

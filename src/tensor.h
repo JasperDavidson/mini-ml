@@ -14,8 +14,8 @@ public:
     std::vector<int> strides;
 
     // Autodiff internal requirements
-    std::unique_ptr<Tensor> grad;
-    std::function<std::vector<std::unique_ptr<Tensor>>(Tensor&)> grad_fn;
+    std::shared_ptr<Tensor> grad;
+    std::function<std::vector<std::shared_ptr<Tensor>>(std::shared_ptr<Tensor>)> grad_fn;
     std::vector<std::shared_ptr<Tensor>> parents;
     int grad_count = 0;
 
