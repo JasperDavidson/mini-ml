@@ -5,7 +5,7 @@
 
 auto add = [](float a, float b) { return a + b; };
 
-void backprop(std::vector<std::shared_ptr<Tensor>> roots) {
+void backward(std::vector<std::shared_ptr<Tensor>> roots) {
     std::queue<std::shared_ptr<Tensor>> tensor_queue;
 
     for (auto& root : roots) {
@@ -15,21 +15,29 @@ void backprop(std::vector<std::shared_ptr<Tensor>> roots) {
 
     while (!tensor_queue.empty()) {
         std::shared_ptr<Tensor> current = tensor_queue.front();
-        std::vector<std::shared_ptr<Tensor>> parent_grads = current->grad_fn(current->grad);
-        tensor_queue.pop();
 
-        for (int i = 0; i < current->parents.size(); ++i) {
-            std::shared_ptr<Tensor> parent = current->parents[i];
+        if (current->grad_fn) {
+            std::vector<std::shared_ptr<Tensor>> parent_grads = current->grad_fn(current->grad);
+            tensor_queue.pop();
 
-            if (!parent->grad) {
-                parent->grad = parent_grads[i];
-            } else {
-                *parent->grad = broadcast_op(*parent->grad, *parent_grads[i], add);
+            for (int i = 0; i < current->parents.size(); ++i) {
+                std::shared_ptr<Tensor> parent = current->parents[i];
+
+                if (!parent->grad) {
+                    parent->grad = parent_grads[i];
+                } else {
+                    *parent->grad = broadcast_op(*parent->grad, *parent_grads[i], add);
+                }
+
+                parent->grad_count--;
+
+                if (parent->grad_count <= 0) {
+                    tensor_queue.push(parent);
+                }
             }
-
-            parent->grad_count--;
-
-            if (parent->grad_count <= 0) {
+        } else {
+            tensor_queue.pop();
+            for (auto& parent : current->parents) {
                 tensor_queue.push(parent);
             }
         }

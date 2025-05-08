@@ -11,10 +11,6 @@ Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(floa
     // Create the broadcasted shape
     std::vector<int> broadcast_shape = Tensor::broadcast_shapes(t1.shape, t2.shape);
 
-    for (int num : broadcast_shape) {
-        std::cout << "(Dimension): " << num << '\n';
-    }
-
     // Compute the data with broadcasted shape
     std::vector<float> output_data;
     int total_size = std::accumulate(broadcast_shape.begin(), broadcast_shape.end(), 1.0, std::multiplies<float>());
@@ -35,12 +31,6 @@ Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(floa
         std::vector<int> flat_idx_1;
         std::vector<int> flat_idx_2;
 
-        std::cout << "multi_idx: ";
-
-        for (int num : multi_idx) {
-            std::cout << num << '\n';
-        }
-
         for (int i = 0; i < multi_idx.size(); ++i) {
             if (t1.shape[i] > 1) {
                 flat_idx_1.push_back(multi_idx[i]);
@@ -55,16 +45,8 @@ Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(floa
             }
         }
 
-        std::cout << "flat_idx_1: ";
-        for (int num : flat_idx_1) {
-            std::cout << num << '\n';
-        }
-
         int flat_index_1 = t1.flatten_index(flat_idx_1);
         int flat_index_2 = t2.flatten_index(flat_idx_2);
-
-        std::cout << "flat_index_1: " << flat_index_1 << '\n';
-        std::cout << "flat_index_2: " << flat_index_2 << '\n';
 
         // Perform the elementwise operation
         output_data.push_back(combine_fn(t1.data[flat_index_1], t2.data[flat_index_2]));
@@ -73,14 +55,17 @@ Tensor broadcast_op(const Tensor& t1, const Tensor& t2, float (*combine_fn)(floa
     return Tensor(output_data, broadcast_shape, true);
 }
 
-std::shared_ptr<Tensor> add(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) {
+std::shared_ptr<Tensor> add_ops(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) {
     auto add_fn = [](float a, float b) { return a + b; };
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(broadcast_op(*t1, *t2, add_fn));
 
-    auto grad_fn = [](std::shared_ptr<Tensor> upstream_grad) {
+    auto grad_fn = [t1, t2](std::shared_ptr<Tensor> upstream_grad) {
+        std::shared_ptr<Tensor> reverse_broadcast_grad_1 = Tensor::reduce_sum_to_shape(upstream_grad, t1->shape);
+        std::shared_ptr<Tensor> reverse_broadcast_grad_2 = Tensor::reduce_sum_to_shape(upstream_grad, t2->shape);
+
         return std::vector<std::shared_ptr<Tensor>>{
-            std::make_shared<Tensor>(*upstream_grad),
-            std::make_shared<Tensor>(*upstream_grad)
+            reverse_broadcast_grad_1,
+            reverse_broadcast_grad_2
         };
     };
 
@@ -92,14 +77,21 @@ std::shared_ptr<Tensor> add(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> 
     return output_t;
 }
 
-std::shared_ptr<Tensor> mul(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) {
+std::shared_ptr<Tensor> mul_ops(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> t2) {
     auto mul_fn = [](float a, float b) { return a * b; };
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(broadcast_op(*t1, *t2, mul_fn));
 
     auto grad_fn = [t1, t2, mul_fn](std::shared_ptr<Tensor> upstream_grad) {
+        std::shared_ptr<Tensor> reverse_broadcast_grad_1 = Tensor::reduce_sum_to_shape(
+            std::make_shared<Tensor>(broadcast_op(*t2, *upstream_grad, mul_fn)), t1->shape
+        );
+        std::shared_ptr<Tensor> reverse_broadcast_grad_2 = Tensor::reduce_sum_to_shape(
+            std::make_shared<Tensor>(broadcast_op(*t1, *upstream_grad, mul_fn)), t2->shape
+        );
+
         return std::vector<std::shared_ptr<Tensor>>{
-            std::make_shared<Tensor>(broadcast_op(*t2, *upstream_grad, mul_fn)),
-            std::make_shared<Tensor>(broadcast_op(*t1, *upstream_grad, mul_fn))
+            reverse_broadcast_grad_1,
+            reverse_broadcast_grad_2
         };
     };
 
@@ -111,7 +103,7 @@ std::shared_ptr<Tensor> mul(std::shared_ptr<Tensor> t1, std::shared_ptr<Tensor> 
     return output_t;
 }
 
-std::shared_ptr<Tensor> neg(std::shared_ptr<Tensor> t) {
+std::shared_ptr<Tensor> neg_ops(std::shared_ptr<Tensor> t) {
     auto neg_fn = [](float a) { return -a; };
 
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(*t);
@@ -131,7 +123,7 @@ std::shared_ptr<Tensor> neg(std::shared_ptr<Tensor> t) {
     return output_t;
 }
 
-std::shared_ptr<Tensor> inv(std::shared_ptr<Tensor> t) {
+std::shared_ptr<Tensor> inv_ops(std::shared_ptr<Tensor> t) {
     auto inv_fn = [](float a) { return 1 / a; };
 
     std::shared_ptr<Tensor> output_t = std::make_shared<Tensor>(*t);

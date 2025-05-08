@@ -5,6 +5,6 @@
 
 #include <queue>
 
-void backprop(std::vector<Tensor> roots);
+void backward(std::vector<std::shared_ptr<Tensor>> roots);
 
 #endif

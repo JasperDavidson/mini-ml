@@ -32,6 +32,8 @@ public:
     // Utility function to generate a tensor of a given size full of 1s
     Tensor ones_like();
 
+    static std::shared_ptr<Tensor> reduce_sum_to_shape(const std::shared_ptr<Tensor>& grad, const std::vector<int>& target_shape);
+
 private:
     // Compute the stride for each dimension --> how many elements to progress in 1D array to get to the next section of the same dimension
     std::vector<int> _compute_strides();

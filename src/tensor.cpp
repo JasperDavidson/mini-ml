@@ -3,6 +3,8 @@
 #include <vector>
 #include <functional>
 #include <stdexcept>
+#include <numeric>
+#include <iostream>
 
 Tensor::Tensor(std::vector<float> data, std::vector<int> shape, bool requires_grad) : data(data), shape(shape), requires_grad(requires_grad) {
     strides = _compute_strides();
@@ -72,4 +74,23 @@ Tensor Tensor::ones_like() {
     }
 
     return Tensor(data, shape, true);
+}
+
+std::shared_ptr<Tensor> Tensor::reduce_sum_to_shape(const std::shared_ptr<Tensor>& grad, const std::vector<int>& target_shape) {
+    std::vector<float> sum_data{};
+
+    for (int i = 0; i < grad->shape.size(); ++i) {
+        if (target_shape[i] == 1 && grad->shape[i] != target_shape[i]) {
+            for (int j = 0; j < grad->strides[i] * grad->shape[i]; j += grad->strides[i]) {
+                float summed_data = std::accumulate(grad->data.begin() + j, grad->data.begin() + j + grad->strides[i], 0.0);
+                sum_data.push_back(summed_data);
+            }
+        }
+    }
+
+    if (sum_data.size() > 0) {
+        return std::make_shared<Tensor>(Tensor(sum_data, target_shape));
+    } else {
+        return grad;
+    }
 }
